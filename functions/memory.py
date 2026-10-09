@@ -1,13 +1,13 @@
-from pydantic import BaseModel, Field
+import uuid
 
-from langchain_core.messages import  HumanMessage, SystemMessage
-from langgraph.store.base import BaseStore
+from pydantic import BaseModel, Field
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
+from langgraph.store.base import BaseStore
 
 from layers.config import get_settings
-from layers.models import UserRequest
-import uuid
+
 
 class MakeMem(BaseModel):
     text: str = Field(description="Atomic user memory as short answer")
@@ -35,6 +35,7 @@ class MemoryManager:
         )
 
         self.mem_llm = self.llm.with_structured_output(MakeDes)
+        self.chats = {}
 
     def make_memory(
         self,
@@ -70,7 +71,7 @@ Store facts such as:
 - Important personal choices
 
 Do not store greetings, temporary questions, or unnecessary details.
-
+Compare with existing memories and set is_new to False for duplicates.
 Set should_write to False if no useful memory exists.
 """
                 ),
@@ -112,3 +113,43 @@ New user message:
             f"- {item.value.get('data', '')}"
             for item in memories
         )
+
+    def generate_title(self, message: str) -> str:
+        title_llm = self.llm.invoke(
+            f"""
+Create a very short chat title for this user message.
+
+Rules:
+- Maximum 5 words
+- No quotes
+- Only return title
+- Make it descriptive
+
+User message:
+{message}
+"""
+        )
+
+        return title_llm.content.strip()
+
+    def create_chat(self, first_message: str) -> str:
+        thread_id = str(uuid.uuid4())
+        title = self.generate_title(first_message)
+
+        self.chats[thread_id] = {
+            "title": title
+        }
+
+        return thread_id
+
+    def make_thread(self, query: str, user_id: str) -> RunnableConfig:
+        thread_id = self.create_chat(query)
+
+        config = {
+            "configurable": {
+                "thread_id": thread_id,
+                "user_id": user_id
+            }
+        }
+
+        return config
