@@ -3,6 +3,7 @@ from langchain_openai import ChatOpenAI
 
 from layers.config import get_settings
 
+from prompts import PLAN_REVISION_PROMPT,PROBLEM_ANALYSIS_PROMPT,PLAN_VALIDATION_PROMPT,PROBLEM_PLANNING_PROMPT
 
 class ProblemAnalysis(BaseModel):
     goal: str = Field(description="Main goal of the user")
@@ -50,14 +51,7 @@ class ProblemBreaker:
     def analyze_problem(self, user_request: str) -> ProblemAnalysis:
         return self.analysis_llm.invoke(
             f"""
-Analyze this user request.
-
-Find:
-- Main goal
-- Requirements
-- Constraints
-- Missing information
-
+{PROBLEM_ANALYSIS_PROMPT}
 User request:
 {user_request}
 """
@@ -66,8 +60,7 @@ User request:
     def make_plan(self, analysis: ProblemAnalysis) -> ProblemPlan:
         return self.plan_llm.invoke(
             f"""
-Create an ordered execution plan from this analysis.
-
+{PROBLEM_PLANNING_PROMPT}
 Goal:
 {analysis.goal}
 
@@ -88,8 +81,7 @@ Make small tasks. Add dependencies only when needed.
     ) -> PlanValidation:
         return self.validation_llm.invoke(
             f"""
-Check whether this plan can complete the user's goal.
-
+{PLAN_VALIDATION_PROMPT}
 Goal:
 {analysis.goal}
 
@@ -111,7 +103,7 @@ Find missing steps, risks, and improvements.
     ) -> ProblemPlan:
         return self.plan_llm.invoke(
             f"""
-Create an improved final plan.
+{PLAN_REVISION_PROMPT}
 
 Goal:
 {analysis.goal}
@@ -127,7 +119,7 @@ Fix all missing steps and risks.
         )
 
 
-def create_final_plan(query: str) -> ProblemPlan:
+def createPlan(query: str) -> ProblemPlan:
     breaker = ProblemBreaker()
 
     analysis = breaker.analyze_problem(query)

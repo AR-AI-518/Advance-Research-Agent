@@ -132,18 +132,12 @@ User message:
 
         return title_llm.content.strip()
 
-    def create_chat(self, first_message: str) -> str:
+    def create_thread(self) -> str:
         thread_id = str(uuid.uuid4())
-        title = self.generate_title(first_message)
-
-        self.chats[thread_id] = {
-            "title": title
-        }
-
         return thread_id
 
-    def make_thread(self, query: str, user_id: str) -> RunnableConfig:
-        thread_id = self.create_chat(query)
+    def make_thread(self, user_id: str) -> RunnableConfig:
+        thread_id = self.create_thread()
 
         config = {
             "configurable": {
